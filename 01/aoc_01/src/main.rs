@@ -2,7 +2,8 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-  let masses = load_input_masses_from_newline_delimited_file("input.txt");
+  // let masses = load_input_masses_from_newline_delimited_file("input.txt");
+  let masses = load_input_masses_from_newline_delimited_file("input2.txt");
   let fuel_needed = calculate_fuel_for_modules_given_masses(&masses);
   println!("{:?}", fuel_needed);
 }
@@ -12,7 +13,14 @@ fn calculate_fuel(mass: f64, divisor: f64, subtractor: f64, should_floor: bool) 
   if should_floor {
     fuel_float = fuel_float.floor();
   }
-  (fuel_float- subtractor) as u64
+  let mut fuel_cost = fuel_float - subtractor;
+  if fuel_cost <= 0.0 {
+    fuel_cost = 0.0;
+  }
+  if fuel_cost > 0.0 {
+    fuel_cost += calculate_fuel(fuel_cost, divisor, subtractor, should_floor) as f64;
+  }
+  fuel_cost as u64
 }
 
 fn calculate_fuel_given_mass(mass: f64) -> u64{
@@ -58,12 +66,19 @@ fn load_input_masses_from_newline_delimited_file(input_file: &str) -> Vec<f64> {
 mod tests {
   use super::*;
 
+  // #[test]
+  // fn examples_from_first_question() {
+  //   assert_eq!(calculate_fuel_given_mass(12.0), 2);
+  //   assert_eq!(calculate_fuel_given_mass(14.0), 2);
+  //   assert_eq!(calculate_fuel_given_mass(1969.0), 654);
+  //   assert_eq!(calculate_fuel_given_mass(100756.0), 33583);
+  // }
+
   #[test]
-  fn examples_from_first_question() {
-    assert_eq!(calculate_fuel_given_mass(12.0), 2);
+  fn examples_from_second_question() {
     assert_eq!(calculate_fuel_given_mass(14.0), 2);
-    assert_eq!(calculate_fuel_given_mass(1969.0), 654);
-    assert_eq!(calculate_fuel_given_mass(100756.0), 33583);
+    assert_eq!(calculate_fuel_given_mass(1969.0), 966);
+    assert_eq!(calculate_fuel_given_mass(100756.0), 50346);
   }
 
   #[test]
