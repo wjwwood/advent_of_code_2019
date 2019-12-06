@@ -1,0 +1,8 @@
+[package]
+name = "aoc_05"
+version = "0.1.0"
+authors = ["William Woodall <william@osrfoundation.org>"]
+edition = "2018"
+
+[dependencies]
+phf = { version = "0.8.0", features = ["macros"] }
