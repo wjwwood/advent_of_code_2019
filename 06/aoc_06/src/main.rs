@@ -6,9 +6,50 @@ use std::cell::RefCell;
 
 fn main() {
   // let uom = parse_universal_orbit_map_from_string("COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L");
-  // println!("{:?}", count_orbits_in_universal_orbit_map(&uom));
+  // let uom = parse_universal_orbit_map_from_string("COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN");
   let uom = parse_universal_orbit_map_from_file("map1.txt");
-  println!("{:?}", count_orbits_in_universal_orbit_map(&uom));
+  println!("total transfers in orbit map: {:?}", count_orbits_in_universal_orbit_map(&uom));
+  println!("transfers from YOU to SAN: {:?}", count_transfer_orbit(&uom, "YOU", "SAN"));
+}
+
+fn generate_transfer_order_to_com(uom: &UniversalOrbitMap, start: &str) -> Vec<String> {
+  let mut transfer_order = Vec::new();
+
+  let mut cursor = uom.orbits[start].clone();
+  loop {
+    transfer_order.push(cursor.borrow().name.clone());
+    let tmp = cursor.borrow().orbited_object.clone();
+    cursor = match tmp {
+      Some(ref x) => x.clone(),
+      None => break
+    };
+  }
+  transfer_order.reverse();
+  transfer_order
+}
+
+fn count_transfer_orbit(uom: &UniversalOrbitMap, start: &str, destination: &str) -> usize {
+  let start_to_com_transfers = generate_transfer_order_to_com(uom, start);
+  let dest_to_com_transfers = generate_transfer_order_to_com(uom, destination);
+
+  let mut start_iter = start_to_com_transfers.iter();
+  let mut dest_iter = dest_to_com_transfers.iter();
+  let mut last_common_index = 0;
+
+  loop {
+    match (start_iter.next(), dest_iter.next()) {
+      (Some(start), Some(dest)) => {
+        if start != dest {
+          break;
+        }
+        last_common_index += 1
+      },
+      _ => break,
+    }
+  }
+
+  // The additional -2 is because they don't count the transfer from YOU-first and last-SAN
+  start_to_com_transfers.len() + dest_to_com_transfers.len() - (2 * last_common_index) - 2
 }
 
 fn count_orbits_for_space_object(space_object: &SpaceObject) -> usize {
