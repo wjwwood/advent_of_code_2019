@@ -7,8 +7,8 @@ fn main() {
   // let (known_chemicals, reactions) = parse_reactions_string_from_file("examples/example2.txt");
   // let (known_chemicals, reactions) = parse_reactions_string_from_file("examples/example3.txt");
   // let (known_chemicals, reactions) = parse_reactions_string_from_file("examples/example4.txt");
-  // let (known_chemicals, reactions) = parse_reactions_string_from_file("examples/example5.txt");
-  let (known_chemicals, reactions) = parse_reactions_string_from_file("part1_input.txt");
+  let (known_chemicals, reactions) = parse_reactions_string_from_file("examples/example5.txt");
+  // let (known_chemicals, reactions) = parse_reactions_string_from_file("part1_input.txt");
 
   assert!(known_chemicals.contains(&Chemical {name: "FUEL".to_string()}));
   assert!(known_chemicals.contains(&Chemical {name: "ORE".to_string()}));
@@ -19,43 +19,80 @@ fn main() {
   println!("Reaction producing FUEL: {:?}", fuel_reaction);
 
   let mut pool = HashMap::new();
+  println!("ORE needed: {}", calculate_ore_needed_for_reaction(&fuel_reaction, &reactions, &mut pool));
+  println!("{:?}", pool);
 
-  let ore_needed = calculate_ore_needed_for_reaction(&fuel_reaction, &reactions, &mut pool);
-  println!("ORE needed: {}", ore_needed);
+  // let mut pool = HashMap::new();
+  // let mut ore_needed = 0;
+  // let mut max_fuel_produced = 0;
+
+  // loop {
+  //   ore_needed += calculate_ore_needed_for_reaction(&fuel_reaction, &reactions, &mut pool);
+  //   if ore_needed < 1_000_000_000_000 {
+  //     max_fuel_produced += 1;
+  //     println!("FUEL produced: {}, ORE required: {}", max_fuel_produced, ore_needed);
+  //   } else {
+  //     break;
+  //   }
+  // }
+  // println!("FUEL obtained with '{}' ORE: {}", ore_needed, max_fuel_produced);
 }
 
-fn calculate_ore_needed_for_reaction(reaction: &Reaction, reactions: &Vec<Reaction>, pool: &mut ChemicalsPool) -> usize {
+fn calculate_ore_needed_for_n_reactions(
+  reaction: &Reaction,
+  number_of_reactions: usize,
+  reactions: &Vec<Reaction>,
+  pool: &mut ChemicalsPool
+) -> usize
+{
   let mut ore_needed = 0;
 
-  println!("Processing reaction: {}", reaction.to_string());
+  // println!("Processing reaction: {}", reaction.to_string());
+  println!("Creating {} {}, {} times", reaction.outputs[0].amount, reaction.outputs[0].kind.name, number_of_reactions);
   for input in &reaction.inputs {
-    println!("  Processing reaction input: {:?}", input);
+    // println!("  Processing reaction input: {:?}", input);
     loop {
       // if input is ore, add it to the total and continue
       if input.kind.name == "ORE" {
-        // println!("on line: {}", line!());
-        ore_needed += input.amount;
+        ore_needed += input.amount * number_of_reactions;
         break;
       } else {
+        let required_amount = input.amount * number_of_reactions;
         // ensure the pool contains the chemical kind
         pool.entry(input.kind.clone()).or_insert(Chemicals {kind: input.kind.clone(), amount: 0});
-        if pool[&input.kind].amount >= input.amount {
-          // println!("on line: {}", line!());
-          pool.get_mut(&input.kind).unwrap().amount -= input.amount;
+        if pool[&input.kind].amount >= required_amount {
+          pool.get_mut(&input.kind).unwrap().amount -= input.amount * number_of_reactions;
           break;
         }
-        // println!("on line: {}", line!());
         let matched_reactions = find_reactions_with_chemical_in_outputs(&input.kind.name, reactions);
         assert_eq!(matched_reactions.len(), 1);
-        ore_needed += calculate_ore_needed_for_reaction(&matched_reactions[0], reactions, pool);
+        assert_eq!(matched_reactions[0].outputs.len(), 1);
+        let mut needed_cycles = required_amount / matched_reactions[0].outputs[0].amount;
+        if needed_cycles == 0 {
+          needed_cycles = 1;
+        }
+        // if required_amount % matched_reactions[0].outputs[0].amount != 0 {
+        //   needed_cycles += 1;
+        // }
+        ore_needed += calculate_ore_needed_for_n_reactions(
+          &matched_reactions[0],
+          needed_cycles,
+          // 1,
+          reactions,
+          pool);
         for output in &matched_reactions[0].outputs {
-          pool.get_mut(&output.kind).unwrap().amount += output.amount;
+          pool.get_mut(&output.kind).unwrap().amount += output.amount * needed_cycles;
+          // pool.get_mut(&output.kind).unwrap().amount += output.amount;
         }
       }
     }
   }
 
   ore_needed
+}
+
+fn calculate_ore_needed_for_reaction(reaction: &Reaction, reactions: &Vec<Reaction>, pool: &mut ChemicalsPool) -> usize {
+  calculate_ore_needed_for_n_reactions(reaction, 1, reactions, pool)
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
