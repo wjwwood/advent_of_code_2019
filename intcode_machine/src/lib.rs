@@ -8,5 +8,7 @@ mod program;
 mod run_intcode_program;
 
 pub use crate::program::Program;
+pub use crate::program::ProgramInstance;
+pub use crate::program::StepError;
 pub use crate::run_intcode_program::run_intcode_program;
 pub use crate::run_intcode_program::trace_intcode_program;

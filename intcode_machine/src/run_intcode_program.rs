@@ -1,7 +1,7 @@
-use super::execute_instruction::execute_instruction_at;
 use super::instruction_type::InstructionType;
 use super::program::Program;
-use super::program::ProgramContext;
+use super::program::ProgramInstance;
+use super::program::StepError;
 
 pub
 fn run_intcode_program(
@@ -27,22 +27,29 @@ fn run_intcode_program_optional_trace(
   trace: bool,
 ) -> Vec<InstructionType>
 {
-  let mut program_context = ProgramContext {
-    counter: 0,
-    outputs: Vec::new(),
-    inputs: inputs.clone(),
-    trace: trace,
-  };
-  while
-    program_context.counter < program.instructions.len() &&
-    program.instructions[program_context.counter] != 99
-  {
-    if !execute_instruction_at(&mut program, &mut program_context, trace) {
-      // halt encountered, exit
-      break;
-    }
+  let mut program_instance = ProgramInstance::from_ref(&mut program);
+  *program_instance.context.borrow_mut().inputs.borrow_mut() = inputs.clone();
+  program_instance.context.borrow_mut().trace = trace;
+  let mut outputs = Vec::new();
+  loop {
+    let mut next_counter;
+    match program_instance.step() {
+      Ok((counter, x)) => {
+        next_counter = counter;
+        match x {
+          Some(output) => outputs.push(output),
+          None => continue,
+        }
+      },
+      Err(x) => match x {
+        StepError::NeedInput => panic!("unexpected request for input and given inputs exhausted"),
+        StepError::EndOfProgram => break,
+        StepError::Error(msg) => panic!("unexpected error: {}", msg),
+      }
+    };
+    program_instance.context.borrow_mut().counter.set(next_counter);
   }
-  program_context.outputs
+  outputs
 }
 
 #[cfg(test)]

@@ -3,8 +3,9 @@ use permutohedron::heap_recursive;
 extern crate intcode_machine;
 
 use intcode_machine::Program;
+use intcode_machine::ProgramInstance;
+use intcode_machine::StepError;
 use intcode_machine::run_intcode_program;
-// use intcode_machine::trace_intcode_program;
 
 fn main() {
   let original_program = Program::from_file("amplifier_program.csv");
@@ -20,7 +21,7 @@ fn main() {
 fn create_phase_sequences(number_of_amplifiers: i64) -> Vec<Vec<i32>> {
   let mut initial_vector = Vec::new();
   for i in 0..number_of_amplifiers {
-    initial_vector.push(i as i32);
+    initial_vector.push((i + 5) as i32);
   }
   let mut permutations = Vec::new();
   heap_recursive(&mut initial_vector, |permutation| {
@@ -46,25 +47,55 @@ fn run_amp_sequence(program: &Program, sequence: &Vec<i32>) -> i64 {
   result
 }
 
-// fn run_program_with_console(program: &mut Vec<i32>) {
-//   let mut program_context = ProgramContext {
-//     counter: 0,
-//     outputs: Vec::new(),
-//     inputs: None,
-//   };
-//   while program[program_context.counter] != 99 {
-//     if !execute_instruction_at(program, &mut program_context) {
-//       // halt encountered, exit
-//       break;
-//     }
-//     if !program_context.outputs.is_empty() {
-//       for line in program_context.outputs {
-//         println!("{}", line);
-//       }
-//       program_context.outputs = Vec::new();
-//     }
-//   }
-// }
+fn run_amp_sequence_until_halt(program: &Program, sequence: &Vec<i32>) -> i64 {
+  let mut result: i64 = 0;
+  let mut programs = Vec::new();
+  let mut program_instances = Vec::new();
+  for _ in sequence {
+    programs.push(program.clone());
+    program_instances.push(ProgramInstance::new(&mut programs.last_mut().unwrap()));
+  }
+  loop {
+    for (i, gain) in sequence.iter().enumerate() {
+      // setup the next two inputs
+      program_instances[i].context.inputs = Some(vec![*gain, result as i32]);
+      // run until halt or input is requested again
+      let mut next_result = 0;
+      let mut halted = false;
+      loop {
+        match program_instances[i].step() {
+          Ok(x) => match x {
+            Some(x) => {
+              if next_result != 0 {
+                panic!("unexpectedly got second result");
+              }
+            },
+            None => continue,
+          },
+          Err(x) => match x {
+            StepError::NeedInput => break,
+            StepError::EndOfProgram => {
+              halted = true;
+              break;
+            },
+            StepError::Error(msg) => panic!("unexpected error: {}", msg),
+          },
+        }
+      }
+      if next_result == 0 {
+        panic!("program ended before giving result");
+      }
+      result = next_result;
+      if halted {
+        program_instances.remove(i);
+      }
+      // let results = run_intcode_program(&mut (programs[i]), &Some(vec![*gain, result as i32]));
+      // assert_eq!(results.len(), 1);
+      // result = results[0] as i64;
+    }
+  }
+  result
+}
 
 #[test]
 fn example1() {

@@ -1,7 +1,9 @@
+use super::instruction_type::InstructionType;
 use super::operation_instance::OperationInstance;
 use super::operations::OPERATIONS;
 use super::parameter_mode::ParameterMode;
 use super::program::ProgramContext;
+use super::program::StepError;
 
 pub
 struct Operation {
@@ -9,8 +11,8 @@ struct Operation {
   pub size: usize,
   pub execute: fn(
     program: &mut Vec<i32>,
-    program_context: &mut ProgramContext,
-    op_instance: &OperationInstance) -> usize,
+    program_context: &ProgramContext,
+    op_instance: &OperationInstance) -> Result<(usize, Option<InstructionType>), StepError>,
 }
 
 pub
